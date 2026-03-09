@@ -1,19 +1,39 @@
 const express = require('express');
+const cors = require('cors'); // เพิ่มเพื่อรองรับการเรียกจากหน้าบ้าน
 const authRoutes = require('./routes/auth.routes');
-const postRoutes = require('./routes/post.routes');
-const path = require('path');
+const productRoutes = require('./routes/product.routes');
+const orderRoutes = require('./routes/order.routes');
+const postRoutes = require('./routes/post.routes'); // แยกไฟล์ออกมา
 require('dotenv').config();
-const supabase = require('./config/supabase'); // Import our database connection
-const app = express(); // Create Express application
-app.use(express.json()); // Update app.js to allow Express to handle JSON requests
-app.use("/auth", authRoutes);
-app.use("/posts", postRoutes);
-// Home page route
-app.get('/', (req, res) => {
-    res.send(`<h1>Welcome to My First Authentication Backend App!</h1>`);
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Log requests (ช่วยในการ Debug)
+app.use((req, res, next) => {
+    console.log(`${new Date().toLocaleString()} | ${req.method} ${req.url}`);
+    next();
 });
-// Start the server
-const PORT = process.env.PORT || 3000;
+
+// Routes
+app.use("/auth", authRoutes);
+app.use("/products", productRoutes);
+app.use("/orders", orderRoutes);
+app.use("/posts", postRoutes); // Path จะเป็น /posts
+
+app.get('/', (req, res) => {
+    res.send(`<h1>Welcome to POS & Post System API</h1>`);
+});
+
+// Handle 404
+app.use((req, res) => {
+    res.status(404).json({ message: "Endpoint not found" });
+});
+
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });

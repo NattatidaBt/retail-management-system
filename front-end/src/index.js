@@ -3,15 +3,17 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+// นำเข้า AuthProvider เพื่อใช้จัดการสถานะการล็อกอินทั่วทั้งแอป
+import { AuthProvider } from './context/AuthContext'; 
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    {/* หุ้ม App ด้วย AuthProvider เพื่อให้ทุกหน้าดึงข้อมูล User และ Token ได้ */}
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </React.StrictMode>
 );
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();

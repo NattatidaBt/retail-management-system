@@ -2,7 +2,6 @@ const supabase = require('../config/supabase');
 
 /* =========================
    GET /products
-   ดูสินค้าทั้งหมด (staff + admin)
 ========================= */
 exports.getProducts = async (req, res) => {
   try {
@@ -13,26 +12,20 @@ exports.getProducts = async (req, res) => {
       .select('*')
       .order('id');
 
-    if (search) {
-      query = query.ilike('name', `%${search}%`);
-    }
-    if (category_id) {
-      query = query.eq('category_id', category_id);
-    }
+    if (search) query = query.ilike('name', `%${search}%`);
+    if (category_id) query = query.eq('category_id', category_id);
 
     const { data, error } = await query;
     if (error) throw error;
 
     res.json(data);
   } catch (error) {
-    console.error('getProducts error:', error.message);
     res.status(500).json({ message: error.message });
   }
 };
 
 /* =========================
    GET /products/:id
-   ดูสินค้ารายตัว (staff + admin)
 ========================= */
 exports.getProductById = async (req, res) => {
   try {
@@ -53,11 +46,14 @@ exports.getProductById = async (req, res) => {
 };
 
 /* =========================
-   POST /products
-   เพิ่มสินค้า (admin only)
+   POST /products  (admin only)
 ========================= */
 exports.createProduct = async (req, res) => {
-  const { name, category_id, price, stock, min_stock, image_url } = req.body;
+  const {
+    name, category_id, price,
+    stock, min_stock, image_url,
+    weight_g, cost_price, barcode   // ✅ field ใหม่
+  } = req.body;
 
   if (!name || price === undefined) {
     return res.status(400).json({ message: 'Name and price are required' });
@@ -66,7 +62,17 @@ exports.createProduct = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('products')
-      .insert([{ name, category_id, price, stock: stock || 0, min_stock: min_stock || 5, image_url }])
+      .insert([{
+        name,
+        category_id,
+        price,
+        stock:      stock      ?? 0,
+        min_stock:  min_stock  ?? 5,
+        image_url:  image_url  || null,
+        weight_g:   weight_g   || null,
+        cost_price: cost_price ?? null,
+        barcode:    barcode    || null,
+      }])
       .select()
       .single();
 
@@ -79,16 +85,21 @@ exports.createProduct = async (req, res) => {
 };
 
 /* =========================
-   PUT /products/:id
-   แก้ไขสินค้า (admin only)
+   PUT /products/:id  (admin only)
 ========================= */
 exports.updateProduct = async (req, res) => {
-  const { name, category_id, price, min_stock, image_url } = req.body;
+  const {
+    name, category_id, price, min_stock, image_url,
+    weight_g, cost_price, barcode   // ✅ field ใหม่
+  } = req.body;
 
   try {
     const { data, error } = await supabase
       .from('products')
-      .update({ name, category_id, price, min_stock, image_url })
+      .update({
+        name, category_id, price, min_stock, image_url,
+        weight_g, cost_price, barcode,
+      })
       .eq('id', req.params.id)
       .select()
       .single();
@@ -104,18 +115,16 @@ exports.updateProduct = async (req, res) => {
 };
 
 /* =========================
-   PATCH /products/:id/stock
-   ปรับ Stock (admin only) — Stock Adjustment page
+   PATCH /products/:id/stock  (admin only)
 ========================= */
 exports.adjustStock = async (req, res) => {
-  const { adjustment } = req.body; // +จำนวน หรือ -จำนวน
+  const { adjustment } = req.body;
 
   if (adjustment === undefined) {
     return res.status(400).json({ message: 'adjustment is required (e.g. 10 or -5)' });
   }
 
   try {
-    // ดึง stock ปัจจุบันก่อน
     const { data: product, error: fetchError } = await supabase
       .from('products')
       .select('stock, name')
@@ -140,15 +149,17 @@ exports.adjustStock = async (req, res) => {
 
     if (error) throw error;
 
-    res.json({ message: `Stock updated: ${product.stock} → ${newStock}`, product: data });
+    res.json({
+      message: `Stock updated: ${product.stock} → ${newStock}`,
+      product: data,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
 /* =========================
-   DELETE /products/:id
-   ลบสินค้า (admin only)
+   DELETE /products/:id  (admin only)
 ========================= */
 exports.deleteProduct = async (req, res) => {
   try {
