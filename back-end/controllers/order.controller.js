@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const logActivity = require('./logActivity'); // ✅ เพิ่ม
 
 /* =========================
    GET /orders
@@ -80,12 +81,12 @@ exports.createOrder = async (req, res) => {
 
     // สร้าง order items
     const orderItems = items.map(item => ({
-      order_id: order.id,
-      product_id: item.product_id,
+      order_id:     order.id,
+      product_id:   item.product_id,
       product_name: item.product_name,
-      image_url: item.image_url || null,
-      quantity: item.quantity,
-      unit_price: item.unit_price
+      image_url:    item.image_url || null,
+      quantity:     item.quantity,
+      unit_price:   item.unit_price
     }));
 
     const { error: itemsError } = await supabase
@@ -109,6 +110,19 @@ exports.createOrder = async (req, res) => {
           .eq('id', item.product_id);
       }
     }
+
+    // ✅ บันทึก log การขาย
+    const itemSummary = items
+      .map(i => `${i.product_name} x${i.quantity}`)
+      .join(', ');
+
+    await logActivity(
+      req.user,
+      'ขายสินค้า',
+      'order',
+      order.id,
+      `ขาย ${items.length} รายการ (${itemSummary}) รวม ${total_price} บาท`
+    );
 
     res.status(201).json({
       message: 'Order created successfully',

@@ -1,9 +1,8 @@
 const express = require('express');
-const cors = require('cors'); // เพิ่มเพื่อรองรับการเรียกจากหน้าบ้าน
+const cors = require('cors');
 const authRoutes = require('./routes/auth.routes');
 const productRoutes = require('./routes/product.routes');
 const orderRoutes = require('./routes/order.routes');
-const postRoutes = require('./routes/post.routes'); // แยกไฟล์ออกมา
 require('dotenv').config();
 
 const app = express();
@@ -22,10 +21,9 @@ app.use((req, res, next) => {
 app.use("/auth", authRoutes);
 app.use("/products", productRoutes);
 app.use("/orders", orderRoutes);
-app.use("/posts", postRoutes); // Path จะเป็น /posts
 
 app.get('/', (req, res) => {
-    res.send(`<h1>Welcome to POS & Post System API</h1>`);
+    res.send(`<h1>Welcome to POS & Retail Management API</h1>`);
 });
 
 // Handle 404

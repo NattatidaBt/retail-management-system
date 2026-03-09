@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const supabase = require("../config/supabase");
+const logActivity = require("./logActivity"); // ✅ เพิ่ม
 
 /* =========================
    POST /auth/login
@@ -34,7 +35,16 @@ exports.login = async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    // ✅ return token + user (frontend ใช้ user.name, user.role)
+    // ✅ บันทึก log การ login (ใช้ supabase โดยตรง เพราะยังไม่มี req.user)
+    await supabase.from("activity_logs").insert({
+      user_id:     user.id,
+      user_name:   user.name,
+      action:      "เข้าสู่ระบบ",
+      target_type: "user",
+      target_id:   String(user.id),
+      detail:      `${user.name} (${user.role}) เข้าสู่ระบบ`,
+    });
+
     res.json({
       token,
       user: {
@@ -89,6 +99,16 @@ exports.register = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
+
+    // ✅ บันทึก log การสมัครสมาชิก
+    await supabase.from("activity_logs").insert({
+      user_id:     user.id,
+      user_name:   user.name,
+      action:      "สมัครสมาชิก",
+      target_type: "user",
+      target_id:   String(user.id),
+      detail:      `สร้างบัญชีใหม่ "${name}" สิทธิ์: ${role}`,
+    });
 
     res.json({
       token,
