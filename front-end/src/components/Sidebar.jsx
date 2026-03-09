@@ -1,12 +1,13 @@
-
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // นำเข้า useAuth เพื่อเช็คสิทธิ์ผู้ใช้
 import logo from '../assets/logo.png';
 
 const menuItems = [
     {
         path: '/dashboard',
         label: 'แดชบอร์ด',
+        roles: ['admin', 'staff'], // กำหนดสิทธิ์ที่เข้าถึงได้
         icon: (
             <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
                 <rect x="3" y="3" width="8" height="8" rx="1" />
@@ -19,6 +20,7 @@ const menuItems = [
     {
         path: '/products',
         label: 'รายการสินค้า',
+        roles: ['admin', 'staff'],
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
@@ -29,18 +31,9 @@ const menuItems = [
         ),
     },
     {
-        path: '/product-detail',
-        label: 'รายละเอียดสินค้า',
-        icon: (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
-                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-            </svg>
-        ),
-    },
-    {
         path: '/product-manage',
         label: 'จัดการข้อมูลสินค้า',
+        roles: ['admin'], // เฉพาะ Admin เท่านั้น
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
@@ -52,6 +45,7 @@ const menuItems = [
     {
         path: '/pos',
         label: 'หน้าขายสินค้า',
+        roles: ['admin', 'staff'],
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
@@ -62,19 +56,9 @@ const menuItems = [
         ),
     },
     {
-        path: '/confirm-payment',
-        label: 'ยืนยันการชำระเงิน',
-        icon: (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
-                <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-                <line x1="1" y1="10" x2="23" y2="10" />
-            </svg>
-        ),
-    },
-    {
         path: '/history',
         label: 'ประวัติการขาย',
+        roles: ['admin', 'staff'],
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
@@ -85,7 +69,8 @@ const menuItems = [
     },
     {
         path: '/inventory',
-        label: 'จัดการสต๊อกสินค้า',
+        label: 'จัดการสต็อกสินค้า',
+        roles: ['admin'], // เฉพาะ Admin เท่านั้น
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
@@ -100,11 +85,12 @@ const menuItems = [
 function Sidebar() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { user, logout } = useAuth(); // ดึงข้อมูลผู้ใช้และฟังก์ชัน logout จาก Context
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const handleLogout = () => {
-        localStorage.removeItem("token");
-        navigate('/signin')
+        logout(); // เรียกใช้ฟังก์ชัน logout ที่ล้างค่าใน localStorage
+        navigate('/signin');
     };
 
     return (
@@ -113,48 +99,56 @@ function Sidebar() {
             style={{ background: 'linear-gradient(175deg, #F5A623 0%, #E09418 100%)' }}
         >
 
-            {/* ── โลโก้ ── */}
+            {/* โลโก้ */}
             <div className="flex items-center justify-center py-6 px-4 border-b border-white/25 mb-2">
                 <img src={logo} alt="EZ Central Retail" className="w-32 object-contain" />
             </div>
 
-            {/* ── เมนู ── */}
+            {/* เมนูที่กรองตามบทบาท (Role-based Navigation) */}
             <nav className="flex flex-col gap-0.5 px-2 pt-2">
-                {menuItems.map((item) => {
-                    const isActive = location.pathname === item.path;
-                    return (
-                        <button
-                            key={item.path}
-                            onClick={() => navigate(item.path)}
-                            className={`
-                flex items-center gap-3 px-4 py-[11px] rounded-xl
-                w-full text-left text-[13.5px] font-semibold
-                transition-all duration-200
-                ${isActive
-                                    ? 'bg-white text-amber-700 shadow-md'
-                                    : 'text-amber-950/80 hover:bg-white/30 hover:text-amber-950'
-                                }
-              `}
-                        >
-                            <span className={`flex-shrink-0 ${isActive ? 'text-amber-700' : 'text-amber-950/70'}`}>
-                                {item.icon}
-                            </span>
-                            <span>{item.label}</span>
-                        </button>
-                    );
-                })}
+                {menuItems
+                    .filter((item) => item.roles.includes(user?.role)) // แสดงเฉพาะเมนูที่ Role ของผู้ใช้มีสิทธิ์
+                    .map((item) => {
+                        const isActive = location.pathname === item.path;
+                        return (
+                            <button
+                                key={item.path}
+                                onClick={() => navigate(item.path)}
+                                className={`
+                                    flex items-center gap-3 px-4 py-[11px] rounded-xl
+                                    w-full text-left text-[13.5px] font-semibold
+                                    transition-all duration-200
+                                    ${isActive
+                                        ? 'bg-white text-amber-700 shadow-md'
+                                        : 'text-amber-950/80 hover:bg-white/30 hover:text-amber-950'
+                                    }
+                                `}
+                            >
+                                <span className={`flex-shrink-0 ${isActive ? 'text-amber-700' : 'text-amber-950/70'}`}>
+                                    {item.icon}
+                                </span>
+                                <span>{item.label}</span>
+                            </button>
+                        );
+                    })}
             </nav>
 
-            {/* ── spacer ── */}
             <div className="flex-1" />
 
-            {/* ── ออกจากระบบ ── */}
+            {/* ข้อมูลผู้ใช้เบื้องต้น (แสดงชื่อและบทบาท) */}
+            <div className="px-4 py-2 text-center">
+                <p className="text-[11px] font-bold text-amber-950/60 uppercase tracking-wider">
+                    เข้าใช้งานในฐานะ: {user?.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}
+                </p>
+            </div>
+
+            {/* ปุ่มออกจากระบบ */}
             <div className="px-2 pb-5 pt-3 border-t border-white/25">
                 <button
                     onClick={() => setShowLogoutModal(true)}
                     className="flex items-center gap-3 px-4 py-[11px] rounded-xl
-               w-full text-left text-[13.5px] font-semibold
-               text-black hover:bg-white/20 transition-all duration-200"
+                               w-full text-left text-[13.5px] font-semibold
+                               text-black hover:bg-white/20 transition-all duration-200"
                 >
                     <span className="flex items-center justify-center w-8 h-8 rounded-md bg-amber-800 text-white">
                         <svg
@@ -172,10 +166,11 @@ function Sidebar() {
                             <line x1="21" y1="12" x2="9" y2="12" />
                         </svg>
                     </span>
-
                     <span>ออกจากระบบ</span>
                 </button>
             </div>
+
+            {/* Modal ยืนยันการออกจากระบบ */}
             {showLogoutModal && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl p-6 w-72 shadow-xl text-center">

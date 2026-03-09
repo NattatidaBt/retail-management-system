@@ -1,24 +1,35 @@
 import React from 'react';
+import { useAuth } from '../context/AuthContext'; // นำเข้า useAuth เพื่อดึงข้อมูลผู้ใช้จริง
 
-export default function Navbar({ pageTitle = "แดชบอร์ด", userName = "Angkhanawan", userRole = "Admin", cartQty = 0, onCartClick }) {
+export default function Navbar({ pageTitle = "แดชบอร์ด", cartQty = 0, onCartClick }) {
+  // ดึงข้อมูล user จาก AuthContext ที่เก็บไว้ตอนล็อกอิน
+  const { user } = useAuth();
+
   const dateStr = new Date().toLocaleDateString("th-TH", {
     day: "numeric", month: "short", year: "numeric"
   });
+
+  // แปลงค่า Role ให้เป็นภาษาไทยเพื่อให้อ่านง่ายขึ้น
+  const displayRole = user?.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงาน';
+  // ดึงชื่อผู้ใช้จากฐานข้อมูล หากไม่มีให้ใช้คำว่า Guest
+  const displayName = user?.name || "ผู้ใช้งาน";
 
   return (
     <nav className="flex items-center justify-between px-6 h-14 bg-yellow-50 border-b border-yellow-200">
       <span className="font-bold text-gray-800 text-sm">{pageTitle}</span>
       <div className="flex items-center gap-2">
-        {/* วันที่ */}
+        
+        {/* ส่วนแสดงวันที่ปัจจุบัน */}
         <div className="flex items-center gap-2 rounded-md px-3 py-1.5 border border-yellow-300 bg-gray-50 text-sm text-gray-700">
           <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           <span>{dateStr}</span>
         </div>
+        
         <div className="w-px h-7 bg-gray-300 mx-1" />
 
-        {/* ตะกร้า */}
+        {/* ส่วนตะกร้าสินค้าสำหรับหน้า POS */}
         <div
           className="relative flex items-center justify-center w-9 h-9 cursor-pointer hover:bg-amber-100 rounded-full transition"
           onClick={onCartClick}
@@ -34,7 +45,7 @@ export default function Navbar({ pageTitle = "แดชบอร์ด", userNam
           )}
         </div>
 
-        {/* User */}
+        {/* ส่วนแสดงข้อมูลผู้ใช้งานจริงจากฐานข้อมูล */}
         <div className="flex items-center gap-2 cursor-pointer">
           <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 border border-gray-200">
             <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
@@ -42,10 +53,11 @@ export default function Navbar({ pageTitle = "แดชบอร์ด", userNam
             </svg>
           </div>
           <div className="leading-none">
-            <p className="text-sm font-semibold text-gray-800 mb-0.5">{userName}</p>
-            <p className="text-xs text-gray-500">{userRole}</p>
+            <p className="text-sm font-semibold text-gray-800 mb-0.5">{displayName}</p>
+            <p className="text-xs text-gray-500">{displayRole}</p>
           </div>
         </div>
+
       </div>
     </nav>
   );

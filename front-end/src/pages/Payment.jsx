@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createOrder } from "../services/api"; // นำเข้าฟังก์ชันเชื่อมต่อ API
 
 export default function Payment({ cart = [], setCart, onConfirm }) {
   const navigate = useNavigate();
@@ -7,7 +8,8 @@ export default function Payment({ cart = [], setCart, onConfirm }) {
   const [method, setMethod] = useState('เงินสด');
   const [received, setReceived] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null); // ✅ เพิ่ม
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false); // สถานะการส่งข้อมูล
 
   const addQty = (id) => setCart((prev) => prev.map((i) => i.id === id ? { ...i, qty: i.qty + 1 } : i));
   const removeQty = (id) => setCart((prev) => {
@@ -16,24 +18,57 @@ export default function Payment({ cart = [], setCart, onConfirm }) {
     if (item.qty === 1) return prev.filter((i) => i.id !== id);
     return prev.map((i) => i.id === id ? { ...i, qty: i.qty - 1 } : i);
   });
+
   const deleteItem = (id) => {
     setCart((prev) => prev.filter((i) => i.id !== id));
     setDeleteTarget(null);
   };
 
-  const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-  const total = subtotal;
+  // คำนวณยอดรวมจากสินค้าในตะกร้า
+  const subtotalValue = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const total = subtotalValue;
   const change = method === 'เงินสด' ? Math.max(0, Number(received) - total) : 0;
 
-  const handleConfirmPayment = () => {
-    setShowModal(false);
-    setShowSuccess(true);
+  // ฟังก์ชันส่งข้อมูลไปยัง Backend เพื่อบันทึกยอดขายและตัดสต็อก
+  const handleConfirmPayment = async () => {
+    try {
+      setIsSubmitting(true);
+
+      // เตรียมรูปแบบข้อมูลให้ตรงกับเงื่อนไขของฐานข้อมูล (Not Null Constraint)
+      // มั่นใจว่าชื่อฟิลด์ตรงกับตาราง orders และ order_items ในฐานข้อมูล
+      const orderData = {
+        // รายการสินค้าในตะกร้า
+        items: cart.map(item => ({
+          product_id: item.id,
+          product_name: item.name, // เพิ่ม product_name ตามเงื่อนไข Not-null ในตาราง order_items
+          quantity: item.qty,
+          unit_price: Number(item.price), // ใช้ unit_price ตามโครงสร้างตาราง
+          image_url: item.image_url || "" // ป้องกันค่าว่างในฟิลด์ที่อาจจำเป็น
+        })),
+        payment_method: method,
+        subtotal: Number(total), // ระบุค่า subtotal เพื่อป้องกัน Error null value
+        vat_amount: Number(total * 0.07), // ใช้ vat_amount ตามโครงสร้างตาราง orders
+        total_price: Number(total) // ใช้ total_price ตามโครงสร้างตาราง orders เพื่อแก้ปัญหา NaN
+      };
+
+      // ส่ง Request ไปที่ POST /orders ผ่าน API Service ที่เชื่อมต่อกับ Port 5000
+      await createOrder(orderData);
+
+      setShowModal(false);
+      setShowSuccess(true);
+    } catch (error) {
+      console.error("Payment failed:", error);
+      // แสดงข้อความแจ้งเตือนข้อผิดพลาดที่เกิดขึ้นจริงจากเซิร์ฟเวอร์
+      alert("เกิดข้อผิดพลาดในการบันทึกรายการ: " + (error.response?.data?.message || "ข้อมูลไม่สอดคล้องกับฐานข้อมูล"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSuccessClose = () => {
     setShowSuccess(false);
     setCart([]);
-    onConfirm && onConfirm(total);
+    if (onConfirm) onConfirm(total);
     navigate('/pos');
   };
 
@@ -83,7 +118,7 @@ export default function Payment({ cart = [], setCart, onConfirm }) {
           <p className="text-gray-400 text-sm">กรุณาเลือกสินค้าจากหน้าขายสินค้าก่อน</p>
           <button onClick={() => navigate('/pos')}
             className="mt-2 px-6 py-2 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold text-sm rounded-xl transition">
-            ← กลับไปเลือกสินค้า
+            กลับไปเลือกสินค้า
           </button>
         </div>
       ) : (
@@ -92,8 +127,8 @@ export default function Payment({ cart = [], setCart, onConfirm }) {
             {cart.map((item) => (
               <div key={item.id} className="flex items-center gap-6 py-4">
                 <div className="w-20 h-20 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {item.image
-                    ? <img src={item.image} alt={item.name} className="w-full h-full object-contain p-1" />
+                  {item.image_url
+                    ? <img src={item.image_url} alt={item.name} className="w-full h-full object-contain p-1" />
                     : <span className="text-xs text-gray-400">รูป</span>}
                 </div>
                 <div className="flex-1 flex justify-between items-center">
@@ -107,7 +142,6 @@ export default function Payment({ cart = [], setCart, onConfirm }) {
                   </div>
                   <div className="flex items-center gap-6">
                     <p className="font-bold text-black text-base w-24 text-right">{(item.price * item.qty).toFixed(2)} บาท</p>
-                    {/* ✅ เปลี่ยนจาก deleteItem ตรงๆ มาเป็น setDeleteTarget */}
                     <button onClick={() => setDeleteTarget(item)} className="text-[#E74C3C] hover:text-red-700 transition">
                       <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
@@ -122,7 +156,7 @@ export default function Payment({ cart = [], setCart, onConfirm }) {
           <div className="mt-8 max-w-sm ml-auto mr-10 space-y-3">
             <div className="flex justify-between font-bold text-black text-base">
               <span>รวม</span>
-              <div className="w-32 flex justify-between"><span>{subtotal.toFixed(2)}</span><span>บาท</span></div>
+              <div className="w-32 flex justify-between"><span>{subtotalValue.toFixed(2)}</span><span>บาท</span></div>
             </div>
             <div className="flex justify-between font-bold text-black text-base pt-2 border-t border-gray-200">
               <span>รวมทั้งหมด</span>
@@ -145,11 +179,9 @@ export default function Payment({ cart = [], setCart, onConfirm }) {
         </button>
       </div>
 
-      {/* ── Modal ยืนยันลบสินค้า ── */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <div className="bg-white rounded-3xl shadow-2xl w-80 p-8 flex flex-col items-center text-center">
-            {/* ไอคอนตะกร้า */}
             <div className="w-20 h-20 rounded-full bg-yellow-50 flex items-center justify-center mb-4">
               <svg className="w-11 h-11 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -159,7 +191,7 @@ export default function Payment({ cart = [], setCart, onConfirm }) {
             <p className="text-gray-700 text-base mb-1">
               ต้องการลบ <span className="text-amber-500 font-bold">{deleteTarget.name}</span>
             </p>
-            <p className="text-gray-700 text-base mb-6">ออกจากคลังสินค้าหรือไม่</p>
+            <p className="text-gray-700 text-base mb-6">ออกจากรายการชำระเงินหรือไม่</p>
             <div className="flex gap-3 w-full">
               <button
                 onClick={() => deleteItem(deleteTarget.id)}
@@ -178,7 +210,6 @@ export default function Payment({ cart = [], setCart, onConfirm }) {
         </div>
       )}
 
-      {/* ── Modal เลือกช่องทางชำระเงิน ── */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-3xl shadow-2xl w-[420px] p-7 relative">
@@ -227,15 +258,14 @@ export default function Payment({ cart = [], setCart, onConfirm }) {
             )}
             <button
               onClick={handleConfirmPayment}
-              disabled={method === 'เงินสด' && Number(received) < total}
+              disabled={isSubmitting || (method === 'เงินสด' && Number(received) < total)}
               className="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-white font-bold text-base rounded-2xl transition disabled:opacity-40 disabled:cursor-not-allowed mt-1">
-              ✓ ยืนยันการชำระเงิน
+              {isSubmitting ? "กำลังประมวลผล..." : "ยืนยันการชำระเงิน"}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Modal ชำระเงินสำเร็จ ── */}
       {showSuccess && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-3xl shadow-2xl w-80 p-8 flex flex-col items-center text-center">

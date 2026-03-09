@@ -3,19 +3,45 @@ import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import shopImage from "../assets/shope.png";
 import bgLeft from "../assets/signin.png";
+import { login } from "../services/api"; //นำเข้าฟังก์ชันจาก Service Layer
 
 export default function SignIn() {
     const navigate = useNavigate();
     const [form, setForm] = useState({ email: "", password: "" });
     const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState(""); //สำหรับแสดงข้อความ Error เมื่อ Login พลาด
+    const [loading, setLoading] = useState(false); //ป้องกันการกดซ้ำขณะรอดึงข้อมูล
 
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = () => {
-        console.log("Sign in:", form);
-        navigate("/dashboard");
+    // --- ส่วนที่แก้ไข: การเชื่อมต่อกับ Backend Port 5000 ---
+    const handleSubmit = async (e) => {
+        e.preventDefault(); // ป้องกันหน้า Refresh
+        setLoading(true);
+        setError("");
+
+        try {
+            // 1. ส่งคำขอไปยัง Backend ผ่าน API Service
+            const data = await login(form);
+
+            // 2. เมื่อสำเร็จ บันทึก Token และ User ลง LocalStorage
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+
+            console.log("Login Success, User Role:", data.user.role);
+            
+            // 3. นำทางไปยัง Dashboard
+            navigate("/dashboard");
+        } catch (err) {
+            // 4. จัดการ Error กรณีรหัสผิด หรือ Server มีปัญหา
+            const errorMsg = err.response?.data?.message || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่";
+            setError(errorMsg);
+            console.error("Sign in failed:", errorMsg);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -59,7 +85,7 @@ export default function SignIn() {
 
             {/* ===== Card กลาง-ขวา ===== */}
             <div className="flex flex-1 items-center justify-end pr-72 relative z-10">
-                <div className="relative" style={{ paddingTop: "12px" }}>
+                <form onSubmit={handleSubmit} className="relative" style={{ paddingTop: "12px" }}>
 
                     {/* กรอบเหลืองยื่นขึ้นบน */}
                     <div
@@ -94,9 +120,15 @@ export default function SignIn() {
                             </h2>
                         </div>
 
-                        {/* Form */}
-                        <div className="space-y-4">
+                        {/* แสดง Error Message */}
+                        {error && (
+                            <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg mb-4 text-center border border-red-200 font-medium">
+                                {error}
+                            </div>
+                        )}
 
+                        {/* Form Inputs */}
+                        <div className="space-y-4">
                             {/* Email */}
                             <div className="flex items-center bg-gray-50 border border-amber-300 rounded-lg px-4 py-3 gap-3">
                                 <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
@@ -105,6 +137,7 @@ export default function SignIn() {
                                 <input
                                     type="email"
                                     name="email"
+                                    required
                                     placeholder="Email"
                                     value={form.email}
                                     onChange={handleChange}
@@ -120,6 +153,7 @@ export default function SignIn() {
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     name="password"
+                                    required
                                     placeholder="Password"
                                     value={form.password}
                                     onChange={handleChange}
@@ -141,10 +175,11 @@ export default function SignIn() {
 
                             {/* Login Button */}
                             <button
-                                onClick={handleSubmit}
-                                className="w-full bg-amber-400 hover:bg-amber-500 text-white font-bold py-3 rounded-lg transition-colors duration-200 text-base"
+                                type="submit"
+                                disabled={loading}
+                                className={`w-full ${loading ? 'bg-gray-400' : 'bg-amber-400 hover:bg-amber-500'} text-white font-bold py-3 rounded-lg transition-colors duration-200 text-base`}
                             >
-                                Login
+                                {loading ? "Signing in..." : "Login"}
                             </button>
                         </div>
 
@@ -159,8 +194,7 @@ export default function SignIn() {
                             </span>
                         </p>
                     </div>
-                </div>
-
+                </form>
             </div>
         </div>
     );

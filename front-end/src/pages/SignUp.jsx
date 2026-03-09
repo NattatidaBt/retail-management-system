@@ -2,26 +2,47 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import bgImage from "../assets/backsign.jpg";
+import { register } from "../services/api"; // นำเข้าฟังก์ชัน register จาก api service
 
 export default function SignUp() {
     const navigate = useNavigate();
     const [form, setForm] = useState({ username: "", email: "", password: "" });
     const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState(""); // สำหรับแสดงข้อความผิดพลาด
+    const [loading, setLoading] = useState(false); // สำหรับแสดงสถานะการโหลด
 
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = () => {
-        console.log("Sign up:", form);
-        // TODO: เชื่อมต่อ API register
-        // navigate("/dashboard"); // ← เปิดเมื่อ API พร้อม
+    const handleSubmit = async (e) => {
+        e.preventDefault(); // ป้องกันการรีเฟรชหน้าจอ
+        setLoading(true);
+        setError("");
+
+        try {
+            // เรียกใช้ API Register ไปที่ Port 5000
+            const data = await register(form);
+            
+            console.log("Registration successful:", data);
+            alert("ลงทะเบียนสำเร็จ! กรุณาเข้าสู่ระบบ");
+            
+            // เมื่อสมัครสมาชิกสำเร็จ นำทางไปหน้า Sign In เพื่อให้ผู้ใช้ล็อกอิน
+            navigate("/signin");
+        } catch (err) {
+            // จัดการกรณีเกิดข้อผิดพลาด เช่น Email ซ้ำ หรือ Server มีปัญหา
+            const errorMsg = err.response?.data?.message || "การลงทะเบียนล้มเหลว กรุณาลองใหม่";
+            setError(errorMsg);
+            console.error("Sign up error:", errorMsg);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <div className="flex min-h-screen font-sans">
 
-            {/* ===== ฝั่งซ้าย ===== */}
+            {/* ฝั่งซ้าย */}
             <div
                 className="hidden md:flex w-5/12 flex-col justify-center px-14 relative overflow-hidden"
                 style={{
@@ -63,7 +84,7 @@ export default function SignUp() {
                 </div>
             </div>
 
-            {/* ===== ฝั่งขวา ===== */}
+            {/* ฝั่งขวา */}
             <div className="flex flex-1 flex-col items-center justify-center bg-white px-8">
 
                 {/* โลโก้ */}
@@ -72,7 +93,14 @@ export default function SignUp() {
                 </div>
 
                 {/* Form */}
-                <div className="w-full max-w-sm">
+                <form onSubmit={handleSubmit} className="w-full max-w-sm">
+
+                    {/* แสดง Error Message */}
+                    {error && (
+                        <div className="bg-red-50 text-red-500 text-xs p-3 rounded-lg mb-4 text-center border border-red-200">
+                            {error}
+                        </div>
+                    )}
 
                     {/* Username */}
                     <div className="flex items-center border border-amber-400 rounded-lg px-3 py-2.5 mb-4 gap-3">
@@ -82,6 +110,7 @@ export default function SignUp() {
                         <input
                             type="text"
                             name="username"
+                            required
                             placeholder="Username"
                             value={form.username}
                             onChange={handleChange}
@@ -97,6 +126,7 @@ export default function SignUp() {
                         <input
                             type="email"
                             name="email"
+                            required
                             placeholder="Email"
                             value={form.email}
                             onChange={handleChange}
@@ -112,12 +142,12 @@ export default function SignUp() {
                         <input
                             type={showPassword ? "text" : "password"}
                             name="password"
+                            required
                             placeholder="Password"
                             value={form.password}
                             onChange={handleChange}
                             className="flex-1 outline-none text-sm text-gray-700 placeholder-gray-400 bg-transparent"
                         />
-                        {/* ไอคอนตา */}
                         <button type="button" onClick={() => setShowPassword(!showPassword)}>
                             {showPassword ? (
                                 <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
@@ -134,10 +164,11 @@ export default function SignUp() {
 
                     {/* Sign Up Button */}
                     <button
-                        onClick={handleSubmit}
-                        className="w-full bg-amber-400 hover:bg-amber-500 text-white font-bold py-2.5 rounded-lg transition-colors duration-200 text-sm tracking-wide"
+                        type="submit"
+                        disabled={loading}
+                        className={`w-full ${loading ? "bg-gray-400" : "bg-amber-400 hover:bg-amber-500"} text-white font-bold py-2.5 rounded-lg transition-colors duration-200 text-sm tracking-wide`}
                     >
-                        Sign up
+                        {loading ? "Registering..." : "Sign up"}
                     </button>
 
                     {/* Sign in link */}
@@ -151,7 +182,7 @@ export default function SignUp() {
                         </span>
                     </p>
 
-                </div>
+                </form>
             </div>
         </div>
     );
