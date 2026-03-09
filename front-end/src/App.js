@@ -47,9 +47,14 @@ function Layout({ cart, setCart }) {
     '/inventory': 'จัดการสต็อกสินค้า',
   };
 
+  // ปรับการแสดงผลหัวข้อหน้าเว็บให้รองรับกรณีมี ID ต่อท้าย URL
+  const isManagePage = location.pathname.startsWith('/product-manage');
+
   const pageTitle = matchProductDetail
     ? 'รายละเอียดสินค้า'
-    : pageTitles[location.pathname] || 'แดชบอร์ด';
+    : isManagePage 
+      ? 'จัดการข้อมูลสินค้า'
+      : pageTitles[location.pathname] || 'แดชบอร์ด';
 
   // ดึงข้อมูลผู้ใช้จริงจาก LocalStorage
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -66,7 +71,7 @@ function Layout({ cart, setCart }) {
           cartQty={cartQty}
           onCartClick={() => navigate('/confirm-payment')}
         />
-        <main className="flex-1 overflow-y-auto bg-gray-100 h-screen">
+        <main className="flex-1 overflow-y-auto bg-gray-100">
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/products" element={<Products />} />
@@ -78,11 +83,13 @@ function Layout({ cart, setCart }) {
             />
             <Route path="/history" element={<History />} />
             
-            {/* ป้องกันเฉพาะหน้าที่ต้องเป็น Admin เท่านั้น */}
+            {/* ✅ จุดแก้ไขสำคัญ: เพิ่ม /:id? เพื่อให้ ManageProduct รับค่า ID จาก URL ได้ */}
+            {/* เครื่องหมาย ? หมายถึงจะมี ID (โหมดแก้ไข) หรือไม่มีก็ได้ (โหมดเพิ่มใหม่) */}
             <Route 
-              path="/product-manage" 
+              path="/product-manage/:id?" 
               element={<ProtectedRoute allowedRoles={['admin']}><ManageProduct /></ProtectedRoute>} 
             />
+            
             <Route 
               path="/inventory" 
               element={<ProtectedRoute allowedRoles={['admin']}><Inventory /></ProtectedRoute>} 
