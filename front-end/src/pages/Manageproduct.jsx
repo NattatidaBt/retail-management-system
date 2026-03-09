@@ -1,21 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../services/api'; // นำเข้า api service สำหรับเชื่อมต่อ backend
+import { useNavigate, useParams } from 'react-router-dom'; 
+import api from '../services/api'; 
 
 const categories = ['ทุกหมวดหมู่', 'เครื่องดื่ม', 'ขนมกินเล่น', 'ของใช้', 'อาหารสด', 'ยาและเวชภัณฑ์'];
-// แมพชื่อหมวดหมู่ให้ตรงกับ category_id ในฐานข้อมูล
-const categoryMap = {
-  'เครื่องดื่ม': 1,
-  'ขนมกินเล่น': 2,
-  'ของใช้': 3,
-  'อาหารสด': 4,
-  'ยาและเวชภัณฑ์': 5
-};
+const categoryMap = { 'เครื่องดื่ม': 1, 'ขนมกินเล่น': 2, 'ของใช้': 3, 'อาหารสด': 4, 'ยาและเวชภัณฑ์': 5 };
+const idToCategoryMap = { 1: 'เครื่องดื่ม', 2: 'ขนมกินเล่น', 3: 'ของใช้', 4: 'อาหารสด', 5: 'ยาและเวชภัณฑ์' };
 
 const inputClass = 'w-full px-4 py-2.5 rounded-xl bg-[#D9D9D9] text-gray-700 text-sm outline-none focus:ring-2 focus:ring-amber-700 transition placeholder-gray-400 font-medium';
 
 export default function ManageProduct() {
   const navigate = useNavigate();
+  const { id } = useParams(); 
+  
   const [productName, setProductName] = useState('');
   const [category, setCategory] = useState('ทุกหมวดหมู่');
   const [barcode, setBarcode] = useState('');
@@ -23,13 +19,59 @@ export default function ManageProduct() {
   const [costPrice, setCostPrice] = useState('');
   const [addQty, setAddQty] = useState('');
   const [weight, setWeight] = useState('');
+  const [unit, setUnit] = useState('กรัม'); // State สำหรับหน่วยวัด
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // ตรวจสอบสิทธิ์ผู้ใช้งาน (Authorization) ตามหลักการ Module 7
+  // ✅ ส่วนที่ 1: แก้ไขการดึงข้อมูลเพื่อให้น้ำหนักแสดงผล (Pre-fill)
+  useEffect(() => {
+    const fetchProductData = async () => {
+      if (!id) return;
+
+      try {
+        setLoading(true);
+        const response = await api.get(`/products/${id}`);
+        const p = response.data;
+        
+        if (p) {
+          setProductName(p.name || '');
+          setCategory(idToCategoryMap[p.category_id] || 'ทุกหมวดหมู่');
+          setBarcode(p.barcode || '');
+          setSellPrice(p.price || '');
+          setCostPrice(p.cost_price || '');
+          setAddQty(p.stock || 0);
+          
+          // ✅ แก้ไข: ใช้ Regex ดึงเฉพาะตัวเลขและจุดทศนิยมออกมา (เช่น "430 มล." -> "430")
+          if (p.weight_g) {
+            const numericMatch = p.weight_g.match(/[\d.]+/); 
+            const numericValue = numericMatch ? numericMatch[0] : '';
+            setWeight(numericValue); // ใส่ค่าตัวเลขลงในช่อง Input
+
+            // ตรวจสอบหน่วยวัดจากข้อความเดิมใน DB เพื่อตั้งค่า Dropdown ให้ตรงกัน
+            if (p.weight_g.includes('มล')) {
+              setUnit('มล.');
+            } else if (p.weight_g.includes('ก.')) {
+              setUnit('ก.');
+            } else {
+              setUnit('กรัม');
+            }
+          }
+
+          if (p.image_url) setImage(p.image_url);
+        }
+      } catch (err) {
+        console.error('Fetch error:', err);
+        alert('ไม่สามารถโหลดข้อมูลสินค้าเก่าได้');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProductData();
+  }, [id]);
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    // ตรวจสอบ role จากฐานข้อมูลเพื่อให้มั่นใจว่าเป็น admin จริง
     if (user.role !== 'admin') {
       alert('เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถจัดการสินค้าได้');
       navigate('/products');
@@ -39,59 +81,57 @@ export default function ManageProduct() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // ล้าง URL เดิมออกเพื่อป้องกัน Memory Leak
-      if (image) URL.revokeObjectURL(image);
+      if (image && typeof image === 'string' && image.startsWith('blob:')) URL.revokeObjectURL(image);
       setImage(URL.createObjectURL(file));
     }
   };
 
+  // ✅ ส่วนที่ 2: รวมตัวเลขและหน่วยเข้าด้วยกันก่อนบันทึก
   const handleSave = async () => {
-    // ตรวจสอบความถูกต้องของข้อมูลก่อนส่งไปยัง Backend
     if (!productName.trim()) { alert('กรุณากรอกชื่อสินค้า'); return; }
     if (category === 'ทุกหมวดหมู่') { alert('กรุณาเลือกหมวดหมู่สินค้า'); return; }
     if (!sellPrice || Number(sellPrice) <= 0) { alert('กรุณากรอกราคาขายที่ถูกต้อง'); return; }
 
     try {
       setLoading(true);
-      
-      // จัดเตรียมออบเจ็กต์ข้อมูลให้ตรงกับตาราง products
       const productData = {
         name: productName.trim(),
         category_id: categoryMap[category],
         price: Number(sellPrice),
-        cost_price: costPrice ? Number(costPrice) : 0, // ป้องกันค่า null ในระบบบัญชี
+        cost_price: costPrice ? Number(costPrice) : 0,
         stock: Number(addQty) || 0,
         barcode: barcode.trim() || null,
-        weight_g: weight ? Number(weight) : 0
+        // รวมร่างค่าตัวเลขกับหน่วยเป็นข้อความเดียว (เช่น "430" + " " + "มล.")
+        weight_g: weight ? `${weight} ${unit}` : null 
       };
 
-      // ส่งคำขอสร้างสินค้าใหม่ไปยัง API Port 5000
-      const response = await api.post('/products', productData);
-
-      if (response.data) {
-        alert(`บันทึกสินค้า "${productName}" เข้าสู่ระบบเรียบร้อยแล้ว`);
-        navigate('/products');
+      if (id) {
+        await api.put(`/products/${id}`, productData);
+        alert(`แก้ไขสินค้า "${productName}" เรียบร้อยแล้ว`);
+      } else {
+        await api.post('/products', productData);
+        alert(`เพิ่มสินค้าใหม่ "${productName}" สำเร็จ`);
       }
+      navigate('/products');
     } catch (err) {
-      console.error('Save product error:', err);
-      // แจ้งเตือนข้อผิดพลาดที่ส่งมาจากเซิร์ฟเวอร์ เช่น รหัสสินค้าซ้ำ
-      alert(err.response?.data?.message || 'ไม่สามารถบันทึกข้อมูลได้ โปรดตรวจสอบความถูกต้องของข้อมูล');
+      alert(err.response?.data?.message || 'บันทึกข้อมูลไม่สำเร็จ');
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    // ล้าง URL รูปภาพก่อนปิดหน้าจอ
-    if (image) URL.revokeObjectURL(image);
+    if (image && typeof image === 'string' && image.startsWith('blob:')) URL.revokeObjectURL(image);
     navigate('/products');
   };
 
   return (
     <div className="flex flex-col h-full bg-[#f4f4f4] p-8 overflow-y-auto">
       <div className="max-w-2xl mx-auto bg-white border-2 border-[#8B5A2B] rounded-[24px] p-8 shadow-sm">
+        
+        <h2 className="text-xl font-black text-amber-900 mb-6">{id ? 'แก้ไขข้อมูลสินค้า' : 'จัดการข้อมูลสินค้า'}</h2>
 
-        {/* ส่วนอัปโหลดรูปภาพ */}
+        {/* ส่วนรูปภาพสินค้า */}
         <div className="mb-6">
           <label className="block text-base font-bold text-black mb-2">รูปภาพสินค้า</label>
           <div className="flex gap-5">
@@ -101,8 +141,7 @@ export default function ManageProduct() {
               ) : (
                 <div className="flex flex-col items-center gap-2 text-gray-400">
                   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span className="text-xs">ยังไม่มีรูปภาพ</span>
                 </div>
@@ -113,106 +152,83 @@ export default function ManageProduct() {
                 เลือกรูปภาพ
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
               </label>
-              {image && (
-                <button onClick={() => { URL.revokeObjectURL(image); setImage(null); }}
-                  className="px-5 py-2.5 bg-gray-100 hover:bg-red-50 text-red-400 hover:text-red-600 text-sm font-bold rounded-xl transition">
-                  ลบรูป
-                </button>
-              )}
-              <p className="text-xs text-gray-400 leading-relaxed">รองรับ JPG, PNG<br />ขนาดไม่เกิน 5MB</p>
             </div>
           </div>
         </div>
 
-        {/* ข้อมูลชื่อสินค้า */}
+        {/* ชื่อสินค้า */}
         <div className="mb-6">
           <label className="block text-base font-bold text-black mb-2">ชื่อสินค้า</label>
-          <input type="text" className={inputClass} placeholder="กรอกชื่อสินค้า"
-            value={productName} onChange={(e) => setProductName(e.target.value)} />
+          <input type="text" className={inputClass} value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="กรอกชื่อสินค้า" />
         </div>
 
-        {/* การเลือกหมวดหมู่สอดคล้องกับตาราง categories */}
+        {/* หมวดหมู่ */}
         <div className="mb-6">
           <label className="block text-base font-bold text-black mb-2">หมวดหมู่</label>
-          <div className="relative">
-            <select className={`${inputClass} appearance-none cursor-pointer`}
-              value={category} onChange={(e) => setCategory(e.target.value)}>
-              {categories.map((c) => (<option key={c} value={c}>{c}</option>))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-600">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
+          <select className={`${inputClass} cursor-pointer`} value={category} onChange={(e) => setCategory(e.target.value)}>
+            {categories.map((c) => (<option key={c} value={c}>{c}</option>))}
+          </select>
         </div>
 
-        {/* ข้อมูลรหัสแท่ง */}
+        {/* บาร์โค้ด */}
         <div className="mb-6">
           <label className="block text-base font-bold text-black mb-2">บาร์โค้ด</label>
-          <input type="text" className={inputClass} placeholder="กรอกบาร์โค้ด (ถ้ามี)"
-            value={barcode} onChange={(e) => setBarcode(e.target.value)} />
+          <input type="text" className={inputClass} value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="กรอกบาร์โค้ด" />
         </div>
 
-        {/* ยอดเงินสำหรับการวิเคราะห์กำไรขาดทุน */}
+        {/* ราคาขาย/ต้นทุน */}
         <div className="flex gap-6 mb-6">
           <div className="flex-1">
             <label className="block text-base font-bold text-black mb-2">ราคาขาย</label>
-            <div className="relative">
-              <span className="absolute left-4 inset-y-0 flex items-center text-gray-500 text-sm font-medium">฿</span>
-              <input type="number" className={`${inputClass} pl-8`} placeholder="0.00"
-                value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} min="0" step="0.01" />
-            </div>
+            <input type="number" className={inputClass} value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} placeholder="0.00" />
           </div>
           <div className="flex-1">
             <label className="block text-base font-bold text-black mb-2">ราคาต้นทุน</label>
-            <div className="relative">
-              <span className="absolute left-4 inset-y-0 flex items-center text-gray-500 text-sm font-medium">฿</span>
-              <input type="number" className={`${inputClass} pl-8`} placeholder="0.00"
-                value={costPrice} onChange={(e) => setCostPrice(e.target.value)} min="0" step="0.01" />
-            </div>
+            <input type="number" className={inputClass} value={costPrice} onChange={(e) => setCostPrice(e.target.value)} placeholder="0.00" />
           </div>
         </div>
 
-        {/* ข้อมูลกายภาพของสินค้า */}
+        {/* ✅ ส่วนน้ำหนักสินค้า: ใช้ Regex match ตัวเลขเพื่อให้แสดงใน Input Number ได้แม่นยำ */}
         <div className="mb-6">
           <label className="block text-base font-bold text-black mb-2">น้ำหนักสินค้า</label>
-          <div className="flex items-center gap-3">
-            <input type="number" className={`${inputClass}`} placeholder="0.00"
-              value={weight} onChange={(e) => setWeight(e.target.value)} min="0" step="0.01" />
-            <span className="text-sm font-bold text-gray-500 whitespace-nowrap">กรัม</span>
+          <div className="flex gap-3">
+            <input 
+              type="number" 
+              step="0.01"
+              className={`${inputClass} flex-1`} 
+              value={weight} 
+              onChange={(e) => setWeight(e.target.value)} 
+              placeholder="0.00" 
+            />
+            <select 
+              className="w-32 px-4 py-2.5 rounded-xl bg-[#D9D9D9] text-gray-700 text-sm outline-none focus:ring-2 focus:ring-amber-700 font-bold cursor-pointer transition-all"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+            >
+              <option value="กรัม">กรัม</option>
+              <option value="มล.">มล.</option>
+              <option value="ก.">ก.</option>
+            </select>
           </div>
         </div>
 
-        {/* จำนวนสินค้าเริ่มต้นในสต็อก */}
+        {/* จำนวนสต็อก */}
         <div className="mb-8 w-1/2">
-          <label className="block text-base font-bold text-black mb-2">จำนวนสินค้าเริ่มต้น</label>
-          <div className="relative">
-            <input type="number" className={`${inputClass} pr-10`} placeholder="0"
-              value={addQty} onChange={(e) => setAddQty(e.target.value)} min="0" />
-            {addQty && Number(addQty) > 0 && (
-              <span className="absolute right-3 inset-y-0 flex items-center text-green-600 text-xs font-bold">
-                +{addQty}
-              </span>
-            )}
-          </div>
+          <label className="block text-base font-bold text-black mb-2">
+            {id ? 'จำนวนคงเหลือปัจจุบัน' : 'จำนวนสินค้าเริ่มต้น'}
+          </label>
+          <input type="number" className={inputClass} value={addQty} onChange={(e) => setAddQty(e.target.value)} disabled={!!id} />
+          {id && <p className="text-[10px] text-amber-600 mt-1 font-bold">* แก้ไขสต็อกได้ที่เมนู "จัดการสต็อกสินค้า"</p>}
         </div>
 
-        {/* ส่วนปุ่มดำเนินการ */}
-        <div className="flex justify-end items-center gap-4 border-t pt-6 border-gray-100">
-          <button 
-            onClick={handleSave}
-            disabled={loading}
-            className={`font-bold text-base transition ${loading ? 'text-gray-400' : 'text-black hover:text-amber-700'}`}>
-            {loading ? 'กำลังบันทึกข้อมูล...' : 'บันทึกรายการ'}
+        {/* ปุ่มดำเนินการ */}
+        <div className="flex justify-end items-center gap-4 border-t pt-6">
+          <button onClick={handleSave} disabled={loading} className="font-bold text-base text-black hover:text-amber-700 transition">
+            {loading ? 'กำลังบันทึก...' : id ? 'บันทึกการแก้ไข' : 'บันทึกรายการ'}
           </button>
           <span className="text-gray-300">|</span>
-          <button onClick={handleCancel}
-            className="text-black font-bold text-base hover:text-red-600 transition">
-            ยกเลิก
-          </button>
+          <button onClick={handleCancel} className="text-black font-bold text-base hover:text-red-600 transition">ยกเลิก</button>
         </div>
-
       </div>
     </div>
   );

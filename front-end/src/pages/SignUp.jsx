@@ -6,7 +6,8 @@ import { register } from "../services/api"; // นำเข้าฟังก์
 
 export default function SignUp() {
     const navigate = useNavigate();
-    const [form, setForm] = useState({ username: "", email: "", password: "" });
+    // เพิ่มฟิลด์ role ในโครงสร้างข้อมูลเริ่มต้น (กำหนด default เป็น staff)
+    const [form, setForm] = useState({ name: "", email: "", password: "", role: "staff" });
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState(""); // สำหรับแสดงข้อความผิดพลาด
     const [loading, setLoading] = useState(false); // สำหรับแสดงสถานะการโหลด
@@ -21,7 +22,7 @@ export default function SignUp() {
         setError("");
 
         try {
-            // เรียกใช้ API Register ไปที่ Port 5000
+            // เรียกใช้ API Register ไปที่ Port 5000 พร้อมส่งค่า role ไปยังฐานข้อมูล
             const data = await register(form);
             
             console.log("Registration successful:", data);
@@ -30,7 +31,7 @@ export default function SignUp() {
             // เมื่อสมัครสมาชิกสำเร็จ นำทางไปหน้า Sign In เพื่อให้ผู้ใช้ล็อกอิน
             navigate("/signin");
         } catch (err) {
-            // จัดการกรณีเกิดข้อผิดพลาด เช่น Email ซ้ำ หรือ Server มีปัญหา
+            // จัดการกรณีเกิดข้อผิดพลาด เช่น Email ซ้ำ หรือชื่อซ้ำในระบบ
             const errorMsg = err.response?.data?.message || "การลงทะเบียนล้มเหลว กรุณาลองใหม่";
             setError(errorMsg);
             console.error("Sign up error:", errorMsg);
@@ -102,17 +103,17 @@ export default function SignUp() {
                         </div>
                     )}
 
-                    {/* Username */}
+                    {/* Name */}
                     <div className="flex items-center border border-amber-400 rounded-lg px-3 py-2.5 mb-4 gap-3">
                         <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                         <input
                             type="text"
-                            name="username"
+                            name="name"
                             required
-                            placeholder="Username"
-                            value={form.username}
+                            placeholder="Name"
+                            value={form.name}
                             onChange={handleChange}
                             className="flex-1 outline-none text-sm text-gray-700 placeholder-gray-400 bg-transparent"
                         />
@@ -135,7 +136,7 @@ export default function SignUp() {
                     </div>
 
                     {/* Password */}
-                    <div className="flex items-center border border-amber-400 rounded-lg px-3 py-2.5 mb-6 gap-3">
+                    <div className="flex items-center border border-amber-400 rounded-lg px-3 py-2.5 mb-4 gap-3">
                         <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
@@ -160,6 +161,22 @@ export default function SignUp() {
                                 </svg>
                             )}
                         </button>
+                    </div>
+
+                    {/* Role Selection (เพิ่มส่วนนี้เข้าไปเพื่อระบุฐานะที่สมัคร) */}
+                    <div className="flex items-center border border-amber-400 rounded-lg px-3 py-2.5 mb-6 gap-3">
+                        <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        <select
+                            name="role"
+                            value={form.role}
+                            onChange={handleChange}
+                            className="flex-1 outline-none text-sm text-gray-700 bg-transparent cursor-pointer"
+                        >
+                            <option value="staff">พนักงาน (Staff)</option>
+                            <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+                        </select>
                     </div>
 
                     {/* Sign Up Button */}
