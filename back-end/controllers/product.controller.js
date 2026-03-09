@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const logActivity = require('./logActivity'); // ✅ เพิ่ม
 
 /* =========================
    GET /products
@@ -52,7 +53,7 @@ exports.createProduct = async (req, res) => {
   const {
     name, category_id, price,
     stock, min_stock, image_url,
-    weight_g, cost_price, barcode   // ✅ field ใหม่
+    weight_g, cost_price, barcode
   } = req.body;
 
   if (!name || price === undefined) {
@@ -78,6 +79,15 @@ exports.createProduct = async (req, res) => {
 
     if (error) throw error;
 
+    // ✅ บันทึก log
+    await logActivity(
+      req.user,
+      'เพิ่มสินค้า',
+      'product',
+      data.id,
+      `เพิ่มสินค้า "${name}" ราคา ${price} บาท สต็อก ${stock ?? 0} ชิ้น`
+    );
+
     res.status(201).json({ message: 'Product created', product: data });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -90,7 +100,7 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   const {
     name, category_id, price, min_stock, image_url,
-    weight_g, cost_price, barcode   // ✅ field ใหม่
+    weight_g, cost_price, barcode
   } = req.body;
 
   try {
@@ -107,6 +117,15 @@ exports.updateProduct = async (req, res) => {
     if (error || !data) {
       return res.status(404).json({ message: 'Product not found' });
     }
+
+    // ✅ บันทึก log
+    await logActivity(
+      req.user,
+      'แก้ไขสินค้า',
+      'product',
+      req.params.id,
+      `แก้ไขข้อมูลสินค้า "${name}" ราคา ${price} บาท`
+    );
 
     res.json({ message: 'Product updated', product: data });
   } catch (error) {
@@ -149,6 +168,16 @@ exports.adjustStock = async (req, res) => {
 
     if (error) throw error;
 
+    // ✅ บันทึก log
+    const actionType = Number(adjustment) >= 0 ? 'เพิ่มสต็อก' : 'ลดสต็อก';
+    await logActivity(
+      req.user,
+      actionType,
+      'stock',
+      req.params.id,
+      `ปรับสต็อก "${product.name}" จาก ${product.stock} → ${newStock} (${Number(adjustment) >= 0 ? '+' : ''}${adjustment})`
+    );
+
     res.json({
       message: `Stock updated: ${product.stock} → ${newStock}`,
       product: data,
@@ -163,12 +192,28 @@ exports.adjustStock = async (req, res) => {
 ========================= */
 exports.deleteProduct = async (req, res) => {
   try {
+    // ✅ ดึงชื่อก่อนลบ เพื่อบันทึก log
+    const { data: product } = await supabase
+      .from('products')
+      .select('name')
+      .eq('id', req.params.id)
+      .single();
+
     const { error } = await supabase
       .from('products')
       .delete()
       .eq('id', req.params.id);
 
     if (error) throw error;
+
+    // ✅ บันทึก log
+    await logActivity(
+      req.user,
+      'ลบสินค้า',
+      'product',
+      req.params.id,
+      `ลบสินค้า "${product?.name || req.params.id}" ออกจากระบบ`
+    );
 
     res.json({ message: 'Product deleted' });
   } catch (error) {
