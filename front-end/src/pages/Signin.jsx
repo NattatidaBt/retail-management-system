@@ -56,10 +56,10 @@ export default function SignIn() {
             <div
                 className="absolute rounded-full"
                 style={{
-                    width: "90vw",
-                    height: "90vw",
-                    maxWidth: "750px",
-                    maxHeight: "750px",
+                    width: "150vw",
+                    height: "150vw",
+                    maxWidth: "1000px",
+                    maxHeight: "1000px",
                     top: "50%",
                     left: "-20%",
                     transform: "translateY(-50%)",
@@ -73,13 +73,13 @@ export default function SignIn() {
             {/* ภาพร้านค้า + เงา */}
             <div
                 className="absolute z-10 flex flex-col items-center"
-                style={{ bottom: "8%", left: "10%" }}
+                style={{ bottom: "8%", left: "15%" }}
             >
                 <img
                     src={shopImage}
                     alt="shop"
                     className="object-contain"
-                    style={{ width: "530px" }}
+                    style={{ width: "680px" }}
                 />
                 <div className="w-72 h-4 bg-black opacity-30 rounded-full blur-md -mt-1" />
             </div>
@@ -101,7 +101,7 @@ export default function SignIn() {
 
                     {/* Card ขาว */}
                     <div
-                        className="relative bg-white rounded-3xl w-96 pt-20 pb-10 px-10"
+                        className="relative bg-white rounded-3xl w-[480px] min-h-[520px] pt-24 pb-14 px-12"
                         style={{ zIndex: 1 }}
                     >
                         {/* โลโก้ลอยบน */}
@@ -116,7 +116,7 @@ export default function SignIn() {
 
                         {/* หัวข้อ */}
                         <div className="text-center mb-6">
-                            <h2 className="text-xl font-semibold text-gray-700 leading-snug">
+                            <h2 className="text-4xl font-semibold text-gray-700 leading-snug">
                                 Welcome<br />to Retail Manager
                             </h2>
                         </div>
@@ -129,7 +129,7 @@ export default function SignIn() {
                         )}
 
                         {/* Form Inputs */}
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             {/* Email */}
                             <div className="flex items-center bg-gray-50 border border-amber-300 rounded-lg px-4 py-3 gap-3">
                                 <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
