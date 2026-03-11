@@ -126,110 +126,168 @@ export default function ManageProduct() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f4f4f4] p-8 overflow-y-auto">
-      <div className="max-w-2xl mx-auto bg-white border-2 border-[#8B5A2B] rounded-[24px] p-8 shadow-sm">
-        
-        <h2 className="text-xl font-black text-amber-900 mb-6">{id ? 'แก้ไขข้อมูลสินค้า' : 'จัดการข้อมูลสินค้า'}</h2>
+  <div className="flex flex-col h-full bg-[#f4f4f4] p-8 overflow-y-auto">
+    <div className="max-w-5xl mx-auto bg-white border-2 border-[#8B5A2B] rounded-[24px] p-8 shadow-sm w-full">
 
-        {/* ส่วนรูปภาพสินค้า */}
-        <div className="mb-6">
-          <label className="block text-base font-bold text-black mb-2">รูปภาพสินค้า</label>
-          <div className="flex gap-5">
-            <div className="w-48 h-48 rounded-2xl border-2 border-dashed border-gray-300 bg-[#D9D9D9] flex items-center justify-center overflow-hidden flex-shrink-0">
-              {image ? (
-                <img src={image} alt="preview" className="w-full h-full object-cover" />
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-gray-400">
-                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-xs">ยังไม่มีรูปภาพ</span>
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col justify-center gap-3">
-              <label className="cursor-pointer px-5 py-2.5 bg-amber-400 hover:bg-amber-500 text-white text-sm font-bold rounded-xl transition text-center">
-                เลือกรูปภาพ
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-              </label>
-            </div>
+      <h2 className="text-xl font-black text-amber-900 mb-6">
+        {id ? 'แก้ไขข้อมูลสินค้า' : 'จัดการข้อมูลสินค้า'}
+      </h2>
+
+      
+      <div className="grid grid-cols-[220px_1fr] gap-8 mb-6">
+
+        {/* รูปภาพสินค้า */}
+        <div className="flex flex-col gap-3">
+          <label className="block text-base font-bold text-black">รูปภาพสินค้า</label>
+          <div className="w-full aspect-square rounded-2xl border-2 border-dashed border-gray-300 bg-[#D9D9D9] flex items-center justify-center overflow-hidden">
+            {image ? (
+              <img src={image} alt="preview" className="w-full h-full object-cover" />
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-gray-400">
+                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-xs">ยังไม่มีรูปภาพ</span>
+              </div>
+            )}
           </div>
+          <label className="cursor-pointer px-5 py-2.5 bg-amber-400 hover:bg-amber-500 text-white text-sm font-bold rounded-xl transition text-center">
+            เลือกรูปภาพ
+            <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          </label>
         </div>
 
-        {/* ชื่อสินค้า */}
-        <div className="mb-6">
-          <label className="block text-base font-bold text-black mb-2">ชื่อสินค้า</label>
-          <input type="text" className={inputClass} value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="กรอกชื่อสินค้า" />
-        </div>
+        {/* ข้อมูลสินค้า */}
+        <div className="flex flex-col gap-5">
 
-        {/* หมวดหมู่ */}
-        <div className="mb-6">
-          <label className="block text-base font-bold text-black mb-2">หมวดหมู่</label>
-          <select className={`${inputClass} cursor-pointer`} value={category} onChange={(e) => setCategory(e.target.value)}>
-            {categories.map((c) => (<option key={c} value={c}>{c}</option>))}
-          </select>
-        </div>
-
-        {/* บาร์โค้ด */}
-        <div className="mb-6">
-          <label className="block text-base font-bold text-black mb-2">บาร์โค้ด</label>
-          <input type="text" className={inputClass} value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="กรอกบาร์โค้ด" />
-        </div>
-
-        {/* ราคาขาย/ต้นทุน */}
-        <div className="flex gap-6 mb-6">
-          <div className="flex-1">
-            <label className="block text-base font-bold text-black mb-2">ราคาขาย</label>
-            <input type="number" className={inputClass} value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} placeholder="0.00" />
-          </div>
-          <div className="flex-1">
-            <label className="block text-base font-bold text-black mb-2">ราคาต้นทุน</label>
-            <input type="number" className={inputClass} value={costPrice} onChange={(e) => setCostPrice(e.target.value)} placeholder="0.00" />
-          </div>
-        </div>
-
-        {/* ✅ ส่วนน้ำหนักสินค้า: ใช้ Regex match ตัวเลขเพื่อให้แสดงใน Input Number ได้แม่นยำ */}
-        <div className="mb-6">
-          <label className="block text-base font-bold text-black mb-2">น้ำหนักสินค้า</label>
-          <div className="flex gap-3">
-            <input 
-              type="number" 
-              step="0.01"
-              className={`${inputClass} flex-1`} 
-              value={weight} 
-              onChange={(e) => setWeight(e.target.value)} 
-              placeholder="0.00" 
+          {/* ชื่อสินค้า */}
+          <div>
+            <label className="block text-base font-bold text-black mb-2">ชื่อสินค้า</label>
+            <input
+              type="text"
+              className={inputClass}
+              value={productName}
+              onChange={(e) => setProductName(e.target.value)}
+              placeholder="กรอกชื่อสินค้า"
             />
-            <select 
-              className="w-32 px-4 py-2.5 rounded-xl bg-[#D9D9D9] text-gray-700 text-sm outline-none focus:ring-2 focus:ring-amber-700 font-bold cursor-pointer transition-all"
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
+          </div>
+
+          {/* หมวดหมู่ */}
+          <div>
+            <label className="block text-base font-bold text-black mb-2">หมวดหมู่</label>
+            <select
+              className={`${inputClass} cursor-pointer`}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
             >
-              <option value="กรัม">กรัม</option>
-              <option value="มล.">มล.</option>
-              <option value="ก.">ก.</option>
+              {categories.map((c) => (<option key={c} value={c}>{c}</option>))}
             </select>
           </div>
-        </div>
 
-        {/* จำนวนสต็อก */}
-        <div className="mb-8 w-1/2">
-          <label className="block text-base font-bold text-black mb-2">
-            {id ? 'จำนวนคงเหลือปัจจุบัน' : 'จำนวนสินค้าเริ่มต้น'}
-          </label>
-          <input type="number" className={inputClass} value={addQty} onChange={(e) => setAddQty(e.target.value)} disabled={!!id} />
-          {id && <p className="text-[10px] text-amber-600 mt-1 font-bold">* แก้ไขสต็อกได้ที่เมนู "จัดการสต็อกสินค้า"</p>}
-        </div>
+          {/* บาร์โค้ด */}
+          <div>
+            <label className="block text-base font-bold text-black mb-2">บาร์โค้ด</label>
+            <input
+              type="text"
+              className={inputClass}
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              placeholder="กรอกบาร์โค้ด"
+            />
+          </div>
 
-        {/* ปุ่มดำเนินการ */}
-        <div className="flex justify-end items-center gap-4 border-t pt-6">
-          <button onClick={handleSave} disabled={loading} className="font-bold text-base text-black hover:text-amber-700 transition">
-            {loading ? 'กำลังบันทึก...' : id ? 'บันทึกการแก้ไข' : 'บันทึกรายการ'}
-          </button>
-          <span className="text-gray-300">|</span>
-          <button onClick={handleCancel} className="text-black font-bold text-base hover:text-red-600 transition">ยกเลิก</button>
+          {/* ราคาขาย / ราคาต้นทุน */}
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block text-base font-bold text-black mb-2">ราคาขาย</label>
+              <input
+                type="number"
+                className={inputClass}
+                value={sellPrice}
+                onChange={(e) => setSellPrice(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-base font-bold text-black mb-2">ราคาต้นทุน</label>
+              <input
+                type="number"
+                className={inputClass}
+                value={costPrice}
+                onChange={(e) => setCostPrice(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          {/* น้ำหนักสินค้า */}
+          <div>
+            <label className="block text-base font-bold text-black mb-2">น้ำหนักสินค้า</label>
+            <div className="flex gap-3">
+              <input
+                type="number"
+                step="0.01"
+                className={`${inputClass} flex-1`}
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                placeholder="0.00"
+              />
+              <select
+                className="w-32 px-4 py-2.5 rounded-xl bg-[#D9D9D9] text-gray-700 text-sm outline-none focus:ring-2 focus:ring-amber-700 font-bold cursor-pointer transition-all"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+              >
+                <option value="กรัม">กรัม</option>
+                <option value="มล.">มล.</option>
+                <option value="ก.">ก.</option>
+              </select>
+            </div>
+          </div>
+
+          {/* จำนวนสต็อก */}
+          <div className="w-1/2">
+            <label className="block text-base font-bold text-black mb-2">
+              {id ? 'จำนวนคงเหลือปัจจุบัน' : 'จำนวนสินค้าเริ่มต้น'}
+            </label>
+            <input
+              type="number"
+              className={inputClass}
+              value={addQty}
+              onChange={(e) => setAddQty(e.target.value)}
+              disabled={!!id}
+            />
+            {id && (
+              <p className="text-[10px] text-amber-600 mt-1 font-bold">
+                * แก้ไขสต็อกได้ที่เมนู "จัดการสต็อกสินค้า"
+              </p>
+            )}
+          </div>
+
         </div>
+        
+
       </div>
+      
+
+      {/* ปุ่มดำเนินการ */}
+      <div className="flex justify-end items-center gap-4 border-t pt-6">
+        <button
+          onClick={handleSave}
+          disabled={loading}
+          className="font-bold text-base text-black hover:text-amber-700 transition"
+        >
+          {loading ? 'กำลังบันทึก...' : id ? 'บันทึกการแก้ไข' : 'บันทึกรายการ'}
+        </button>
+        <span className="text-gray-300">|</span>
+        <button
+          onClick={handleCancel}
+          className="text-black font-bold text-base hover:text-red-600 transition"
+        >
+          ยกเลิก
+        </button>
+      </div>
+
     </div>
+  </div>
   );
 }
